@@ -1,5 +1,6 @@
 import dayjs from 'dayjs';
 
+import { INBOX_SESSION_ID } from '@/const/session';
 import { clientDB } from '@/database/client/db';
 import { MessageItem } from '@/database/schemas';
 import { MessageModel } from '@/database/server/models/message';
@@ -19,8 +20,11 @@ export class ClientService extends BaseClientService implements IMessageService 
     return new MessageModel(clientDB as any, this.userId);
   }
 
-  async createMessage(data: CreateMessageParams) {
-    const { id } = await this.messageModel.create(data);
+  async createMessage({ sessionId, ...params }: CreateMessageParams) {
+    const { id } = await this.messageModel.create({
+      ...params,
+      sessionId: this.toDbSessionId(sessionId),
+    });
 
     return id;
   }
@@ -30,7 +34,7 @@ export class ClientService extends BaseClientService implements IMessageService 
   }
 
   async getMessages(sessionId: string, topicId?: string): Promise<ChatMessage[]> {
-    return this.messageModel.query({ sessionId, topicId });
+    return this.messageModel.query({ sessionId: this.toDbSessionId(sessionId), topicId });
   }
 
   async getAllMessages() {
@@ -49,7 +53,7 @@ export class ClientService extends BaseClientService implements IMessageService 
   }
 
   async getAllMessagesInSession(sessionId: string) {
-    return this.messageModel.queryBySessionId(sessionId);
+    return this.messageModel.queryBySessionId(this.toDbSessionId(sessionId));
   }
 
   async updateMessageError(id: string, error: ChatMessageError) {
@@ -86,8 +90,8 @@ export class ClientService extends BaseClientService implements IMessageService 
     return this.messageModel.deleteMessages(ids);
   }
 
-  async removeMessagesByAssistant(assistantId: string, topicId?: string) {
-    return this.messageModel.deleteMessagesBySession(assistantId, topicId);
+  async removeMessagesByAssistant(sessionId: string, topicId?: string) {
+    return this.messageModel.deleteMessagesBySession(this.toDbSessionId(sessionId), topicId);
   }
 
   async removeAllMessages() {
@@ -97,5 +101,9 @@ export class ClientService extends BaseClientService implements IMessageService 
   async hasMessages() {
     const number = await this.countMessages();
     return number > 0;
+  }
+
+  private toDbSessionId(sessionId: string | undefined) {
+    return sessionId === INBOX_SESSION_ID ? null : sessionId;
   }
 }

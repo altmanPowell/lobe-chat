@@ -1,3 +1,4 @@
+import { INBOX_SESSION_ID } from '@/const/session';
 import { clientDB } from '@/database/client/db';
 import { TopicModel } from '@/database/server/models/topic';
 import { BaseClientService } from '@/services/baseClientService';
@@ -11,7 +12,10 @@ export class ClientService extends BaseClientService implements ITopicService {
   }
 
   async createTopic(params: CreateTopicParams): Promise<string> {
-    const item = await this.topicModel.create(params as any);
+    const item = await this.topicModel.create({
+      ...params,
+      sessionId: this.toDbSessionId(params.sessionId),
+    } as any);
 
     if (!item) {
       throw new Error('topic create Error');
@@ -32,12 +36,15 @@ export class ClientService extends BaseClientService implements ITopicService {
   }
 
   async getTopics(params: QueryTopicParams) {
-    const data = await this.topicModel.query(params);
+    const data = await this.topicModel.query({
+      ...params,
+      sessionId: this.toDbSessionId(params.sessionId),
+    });
     return data as unknown as Promise<ChatTopic[]>;
   }
 
   async searchTopics(keyword: string, sessionId?: string) {
-    const data = await this.topicModel.queryByKeyword(keyword, sessionId);
+    const data = await this.topicModel.queryByKeyword(keyword, this.toDbSessionId(sessionId));
 
     return data as unknown as Promise<ChatTopic[]>;
   }
@@ -61,7 +68,7 @@ export class ClientService extends BaseClientService implements ITopicService {
   }
 
   async removeTopics(sessionId: string) {
-    return this.topicModel.batchDeleteBySessionId(sessionId);
+    return this.topicModel.batchDeleteBySessionId(this.toDbSessionId(sessionId));
   }
 
   async batchRemoveTopics(topics: string[]) {
@@ -70,5 +77,9 @@ export class ClientService extends BaseClientService implements ITopicService {
 
   async removeAllTopic() {
     return this.topicModel.deleteAll();
+  }
+
+  private toDbSessionId(sessionId?: string | null) {
+    return sessionId === INBOX_SESSION_ID ? null : sessionId;
   }
 }

@@ -112,13 +112,10 @@ export class ClientService extends BaseClientService implements ISessionService 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _?: AbortSignal,
   ) {
-    // TODO: 需要删除这部分处理逻辑
-    // 后续直接给用户创建一个 inbox 的 session
-    if (activeId === INBOX_SESSION_ID) {
-      return useUserStore.getState().updateDefaultAgent({ config });
-    }
+    const session = await this.sessionModel.findByIdOrSlug(activeId);
+    if (!session || !config) return;
 
-    return this.sessionModel.updateConfig(activeId, config as AgentItem);
+    return this.sessionModel.updateConfig(session.agent.id, config as AgentItem);
   }
 
   async updateSessionMeta(
